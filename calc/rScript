@@ -7,11 +7,12 @@ led1Data <- read.csv(file="../data/ExtractedLedSpectrumBlue.csv") # emission spe
 led2Data <- read.csv(file="../data/ExtractedLedSpectrumRoyalBlue.csv")
 
 # sample all data at 1nm resolution
-xout <- seq(200, 800, 1);
+xout <- seq(450, 500, 1);
 specUpsampled <- unlist(approx(specData[,1], specData[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
 plntUpsampled <- unlist(approx(plntData[,1], plntData[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
 led1Upsampled <- unlist(approx(led1Data[,1], led1Data[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
 led2Upsampled <- unlist(approx(led2Data[,1], led2Data[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
+led1 <- dnorm(xout, mean=470, sd=20)
 
 # calculate intensities
 # spec * plnt * led
@@ -24,8 +25,9 @@ eLed2 = effInt * led2Upsampled
 cat("effective intensity for photosynthesis using led blue: ", sum(eLed1), "\n")
 cat("effective intensity for photosynthesis using led royal blue: ", sum(eLed2), "\n")
 png('rplot.png')
-plot(cbind(xout,eLed1))
+plot(cbind(xout,led1/max(led1)), type="o")
+lines(cbind(xout,led1Upsampled/max(led1Upsampled)))
+#plot(cbind(xout,eLed1))
 #plot(led1Upsampled)
 dev.off()
 cat("done.\n")
-
