@@ -3,31 +3,53 @@
 # load data, data from graphs in papers were extracted using http://arohatgi.info/WebPlotDigitizer/
 specData <- read.csv(file="../data/ASTMG173.csv", skip=2) # spectral irradiance from http://rredc.nrel.gov/solar/spectra/am1.5/
 plntData <- read.csv(file="../data/ExtractedData-CPa-EvansAndersen1986.csv") # absorption spectrum of clorophyll a, data extracted from the paper of Evans Andersen 1986
-led1Data <- read.csv(file="../data/ExtractedLedSpectrumBlue.csv") # emission spectrum of the blue LED, extracted from datasheet
-led2Data <- read.csv(file="../data/ExtractedLedSpectrumRoyalBlue.csv")
+# led1Data <- read.csv(file="../data/ExtractedLedSpectrumBlue.csv") # emission spectrum of the blue LED, extracted from datasheet, this data does not match the specified dominant wavelenth in the datasheet -> do not use!
+# led2Data <- read.csv(file="../data/ExtractedLedSpectrumRoyalBlue.csv")
 
 # sample all data at 1nm resolution
-xout <- seq(450, 500, 1);
+xout <- seq(300, 800, 1);
 specUpsampled <- unlist(approx(specData[,1], specData[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
 plntUpsampled <- unlist(approx(plntData[,1], plntData[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
-led1Upsampled <- unlist(approx(led1Data[,1], led1Data[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
-led2Upsampled <- unlist(approx(led2Data[,1], led2Data[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
-led1 <- dnorm(xout, mean=470, sd=20)
+#led1Upsampled <- unlist(approx(led1Data[,1], led1Data[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
+#led2Upsampled <- unlist(approx(led2Data[,1], led2Data[,2], xout, yleft=0, yright=0)[2], use.names=FALSE)
 
-# calculate intensities
-# spec * plnt * led
-#print(specUpsampled)
+# calculate emission spectra from values in datasheet (dominant wavelength and lambda_1/2)
+ledRoyalBlue <- dnorm(xout, mean=447, sd=20/2.35) # convert full width half maximum (from datasheet) to standard deviation (divide by 2.35)
+ledRoyalBlue <- ledRoyalBlue/max(ledRoyalBlue) * 30 # normalize to min luminous flux according to datasheet
+ledBlue <- dnorm(xout, mean=470, sd=20/2.35)
+ledBlue <- ledBlue/max(ledBlue) * 32
+ledRed <- dnorm(xout, mean=627, sd=20/2.35)
+ledRed <- ledRed/max(ledRed) * 48
+ledDeepRed <- dnorm(xout, mean=655, sd=20/2.35)
+ledDeepRed <- ledDeepRed/max(ledDeepRed) * 40
+
+# calculate intensity received by sun at same spectrum as LED
+# solarIrradiance * plantAbsorption * ledEmission
 effInt = specUpsampled * plntUpsampled
-eLed1 = effInt * led1Upsampled
-eLed2 = effInt * led2Upsampled
+eBlue = effInt * ledBlue
+eRoyal = effInt * ledRoyalBlue
+eRed = effInt * ledRed
+eDeep = effInt * ledDeepRed
 
 # print output
-cat("effective intensity for photosynthesis using led blue: ", sum(eLed1), "\n")
-cat("effective intensity for photosynthesis using led royal blue: ", sum(eLed2), "\n")
+cat("effective intensity for photosynthesis using led blue: ", sum(eBlue), "\n")
+cat("effective intensity for photosynthesis using led royal blue: ", sum(eRoyal), "\n")
+cat("effective intensity for photosynthesis using led red: ", sum(eRed), "\n")
+cat("effective intensity for photosynthesis using led deep red: ", sum(eDeep), "\n")
 png('rplot.png')
-plot(cbind(xout,led1/max(led1)), type="o")
-lines(cbind(xout,led1Upsampled/max(led1Upsampled)))
-#plot(cbind(xout,eLed1))
-#plot(led1Upsampled)
+maxY = max(c(eBlue,eRoyal,eRed,eDeep))
+blue="#0000EE"
+royal="#000099"
+red="#EE0000"
+deep="#880000"
+plot(cbind(xout,eBlue), ylim=c(0,maxY), type="l", col=blue, lty=2, lwd=3, ylab='', xlab='')
+par(new=TRUE)
+plot(cbind(xout,eRoyal), ylim=c(0,maxY), type="l", col=royal, lty=3, lwd=3, axes=FALSE, ylab='', xlab='')
+par(new=TRUE)
+plot(cbind(xout,eRed), ylim=c(0,maxY), type="l", col=red, lty=4, lwd=3, axes=FALSE, ylab='', xlab='')
+par(new=TRUE)
+plot(cbind(xout,eDeep), ylim=c(0,maxY), type="l", col=deep, lty=5, lwd=3, axes=FALSE, ylab='', xlab='')
+title(xlab='Wavelength [nm]', ylab='Normalized absorption')
+legend('topright', c('Royal blue', 'Blue', 'Red', 'Deep red'), col=c(royal, blue, red, deep), lty=c(2, 3, 4, 5), lwd=3, cex=1, title='LED color')
 dev.off()
 cat("done.\n")
